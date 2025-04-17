@@ -1,0 +1,295 @@
+/* 
+ * Basic Reset & Global Styles
+ * Removes default browser styling and sets up basic page structure
+ */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Georgia (serif), sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #f5f5f5;
+    position: relative;
+    min-height: 100vh;
+}
+
+/* 
+ * Preloader style 
+ * Shows and hides loading state
+ */
+body.is-preload * {
+    opacity: 0;
+    transition: opacity 0.5s ease;
+}
+
+/* 
+ * Background Slideshow
+ * Handles the fullscreen background image slideshow
+ */
+#bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    z-index: -1;
+}
+
+#bg div {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0;
+    transition: opacity 1s ease-in-out;
+}
+
+#bg div.visible {
+    opacity: 1;
+}
+
+/* Add a dark overlay to make text more readable */
+#bg:after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);  /* Dark overlay for better text visibility */
+    z-index: -1;
+}
+
+/* 
+ * Typography 
+ * Sets up headings, paragraphs, and links
+ */
+h1, h2, h3 {
+    margin-bottom: 20px;
+    font-weight: 600;
+    color: #fff;
+}
+
+h1 {
+    font-size: 2.5rem;
+}
+
+h2 {
+    font-size: 2rem;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+h3 {
+    font-size: 1.5rem;
+}
+
+p {
+    margin-bottom: 15px;
+}
+
+a {
+    color: #1e90ff;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+a:hover {
+    color: #64b5f6;
+    text-decoration: underline;
+}
+
+/* 
+ * Layout Components
+ * Defines the layout structure
+ */
+#header {
+    text-align: center;
+    padding: 100px 20px 50px;
+    color: #fff;
+}
+
+#main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.main-content {
+    background-color: rgba(30, 30, 30, 0.8);
+    margin-bottom: 40px;
+    padding: 30px;
+    border-radius: 5px;
+    color: #ddd;
+}
+
+/* 
+ * Lists 
+ * Styling for all lists
+ */
+ul {
+    margin-left: 20px;
+    margin-bottom: 20px;
+}
+
+ul li {
+    margin-bottom: 5px;
+}
+
+/* 
+ * Grid System
+ * Simple two-column layout
+ */
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 -15px;
+}
+
+.col-6 {
+    flex: 0 0 50%;
+    padding: 0 15px;
+}
+
+/* 
+ * Form Styling
+ * Styles for the contact form
+ */
+#signup-form {
+    display: flex;
+    flex-direction: column;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+#signup-form input,
+#signup-form textarea {
+    padding: 12px;
+    margin-bottom: 15px;
+    border: none;
+    border-radius: 4px;
+    background-color: rgba(255, 255, 255, 0.9);
+}
+
+#signup-form input[type="submit"] {
+    background-color: #1e90ff;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+#signup-form input[type="submit"]:hover {
+    background-color: #0066cc;
+}
+
+/* Form message feedback */
+.message {
+    display: none;
+    padding: 10px;
+    margin-top: 15px;
+    border-radius: 4px;
+    text-align: center;
+}
+
+.message.visible {
+    display: block;
+}
+
+.message.success {
+    background-color: rgba(76, 175, 80, 0.8);
+    color: white;
+}
+
+.message.failure {
+    background-color: rgba(244, 67, 54, 0.8);
+    color: white;
+}
+
+/* 
+ * Footer 
+ * Styling for the page footer
+ */
+#footer {
+    padding: 30px 20px;
+    text-align: center;
+    color: #ddd;
+    background-color: rgba(0, 0, 0, 0.6);
+    margin-top: 40px;
+}
+
+#footer .icons {
+    list-style: none;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+    margin-left: 0;
+}
+
+#footer .icons li {
+    margin: 0 10px;
+}
+
+#footer .icons a {
+    display: block;
+    width: 40px;
+    height: 40px;
+    line-height: 40px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-size: 1.2rem;
+    text-align: center;
+    transition: background-color 0.3s ease;
+}
+
+#footer .icons a:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    text-decoration: none;
+}
+
+#footer .copyright {
+    list-style: none;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-left: 0;
+}
+
+#footer .copyright li {
+    margin: 0 10px;
+}
+
+/* 
+ * Responsive Design
+ * Makes the site mobile-friendly
+ */
+@media (max-width: 768px) {
+    .col-6 {
+        flex: 0 0 100%;
+        margin-bottom: 20px;
+    }
+    
+    h1 {
+        font-size: 2rem;
+    }
+    
+    h2 {
+        font-size: 1.75rem;
+    }
+    
+    #header {
+        padding: 60px 20px 30px;
+    }
+}
+
+
+
