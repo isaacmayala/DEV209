@@ -9,7 +9,7 @@
 }
 
 body {
-    font-family: Georgia (serif), sans-serif;
+    font-family: Georgia, serif, sans-serif; /* Fixed font-family syntax */
     line-height: 1.6;
     color: #333;
     background-color: #f5f5f5;
@@ -290,6 +290,3 @@ ul li {
         padding: 60px 20px 30px;
     }
 }
-
-
-
