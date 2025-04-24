@@ -46,6 +46,9 @@
       line-height: 1.3;
     }
 
+    .attribution { font-size: 11px; text-align: center; }
+    .attribution a { color: hsl(228, 45%, 44%); }
+
     /* Media query for mobile design */
     @media (max-width: 375px) {
       .card {
