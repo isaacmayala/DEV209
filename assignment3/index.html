@@ -1,1 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Game</title>
+    <link rel="stylesheet" href="css/style.css" type="text/css">
+</head>
+<body>
+    <div class="container">
+        <h1>Sports Memory Game</h1>
+        
+        <div class="controls">
+            <select id="difficulty">
+                <option value="4x4">Easy (4x4)</option>
+                <option value="6x6">Medium (6x6)</option>
+                <option value="8x8">Hard (8x8)</option>
+            </select>
+            <button id="new-game">New Game</button>
+            <button id="settings-btn">Settings</button>
+        </div>
 
+        <div class="settings-panel" id="settings-panel">
+            <div class="settings-option">
+                <span>Sound Effects:</span>
+                <input type="checkbox" id="sound-toggle" checked>
+            </div>
+            <div class="settings-option">
+                <span>Card Back Color:</span>
+                <input type="color" id="card-back-color" class="color-picker" value="#3498db">
+            </div>
+            <div class="settings-option">
+                <span>Card Front Color:</span>
+                <input type="color" id="card-front-color" class="color-picker" value="#2ecc71">
+            </div>
+        </div>
+
+        <div class="game-info">
+            <div class="info-box">Moves: <span id="moves">0</span></div>
+            <div class="info-box">Time: <span id="timer">00:00</span></div>
+        </div>
+
+        <div class="game-board" id="game-board"></div>
+    </div>
+
+    <div class="modal" id="game-over-modal">
+        <div class="modal-content">
+            <h2>Game Over!</h2>
+            <p>You completed the game in <span id="final-moves">0</span> moves.</p>
+            <p>Your time: <span id="final-time">00:00</span></p>
+            <button id="play-again">Play Again</button>
+        </div>
+    </div>
+
+    <script src="js/script.js"></script>
+</body>
+</html>
