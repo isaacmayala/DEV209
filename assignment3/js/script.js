@@ -8,6 +8,7 @@ let gameStarted = false;
 let timer = null;
 let seconds = 0;
 let canFlip = true;
+let gameId = null;
 
 // DOM elements
 const gameBoard = document.getElementById('game-board');
@@ -21,15 +22,56 @@ const finalTimeDisplay = document.getElementById('final-time');
 const playAgainButton = document.getElementById('play-again');
 const settingsButton = document.getElementById('settings-btn');
 const settingsPanel = document.getElementById('settings-panel');
+const soundToggle = document.getElementById('sound-toggle');
+const cardBackColorPicker = document.getElementById('card-back-color');
+const cardFrontColorPicker = document.getElementById('card-front-color');
+const totalMovesDisplay = document.createElement('div');
+totalMovesDisplay.className = 'info-box';
+totalMovesDisplay.innerHTML = 'Total Moves: <span id="total-moves">0</span>';
+document.querySelector('.game-info').appendChild(totalMovesDisplay);
+const totalMovesElement = document.getElementById('total-moves');
 
 // Event listeners
 document.addEventListener('DOMContentLoaded', () => {
-    initGame();
+    // Generate a unique ID for this game instance/tab
+    if (!sessionStorage.getItem('gameId')) {
+        gameId = Date.now().toString();
+        sessionStorage.setItem('gameId', gameId);
+    } else {
+        gameId = sessionStorage.getItem('gameId');
+    }
+    
+    // Load settings if available
+    loadSettings();
+    
+    // Load game state if it exists
+    if (sessionStorage.getItem(`gameState-${gameId}`)) {
+        loadGameState();
+    } else {
+        initGame();
+    }
+    
+    // Update total moves display
+    updateTotalMovesDisplay();
+    
     setupEventListeners();
+    
+    // Set up storage event listener for total moves across tabs
+    window.addEventListener('storage', (event) => {
+        if (event.key === 'totalMoves') {
+            updateTotalMovesDisplay();
+        }
+    });
 });
 
 // Initialize the game
 function initGame() {
+    // Get difficulty from storage or use default
+    const savedDifficulty = sessionStorage.getItem(`difficulty-${gameId}`);
+    if (savedDifficulty) {
+        difficultySelect.value = savedDifficulty;
+    }
+    
     const difficulty = difficultySelect.value;
     const [rows, cols] = difficulty.split('x').map(Number);
     
@@ -44,27 +86,42 @@ function initGame() {
     
     // Place the cards on the board
     renderCards();
+    
+    // Save initial game state
+    saveGameState();
 }
 
 // Event listeners setup
 function setupEventListeners() {
-    newGameButton.addEventListener('click', initGame);
+    newGameButton.addEventListener('click', () => {
+        initGame();
+        saveGameState();
+    });
+    
     playAgainButton.addEventListener('click', () => {
         modal.style.display = 'none';
         initGame();
+        saveGameState();
     });
     
     settingsButton.addEventListener('click', () => {
         settingsPanel.style.display = settingsPanel.style.display === 'none' || settingsPanel.style.display === '' ? 'block' : 'none';
     });
     
+    difficultySelect.addEventListener('change', () => {
+        sessionStorage.setItem(`difficulty-${gameId}`, difficultySelect.value);
+    });
+    
+    soundToggle.addEventListener('change', saveSettings);
     
     cardBackColorPicker.addEventListener('change', (e) => {
         document.documentElement.style.setProperty('--card-back', e.target.value);
+        saveSettings();
     });
     
     cardFrontColorPicker.addEventListener('change', (e) => {
         document.documentElement.style.setProperty('--card-front', e.target.value);
+        saveSettings();
     });
 }
 
@@ -160,6 +217,16 @@ function renderCards() {
         // Add click event listener to card
         cardElement.addEventListener('click', () => handleCardClick(card.id));
         
+        // Add flipped class if the card is flipped
+        if (card.isFlipped || card.isMatched) {
+            cardElement.classList.add('flipped');
+        }
+        
+        // Add matched class if the card is matched
+        if (card.isMatched) {
+            cardElement.classList.add('matched');
+        }
+        
         // Add card to game board
         gameBoard.appendChild(cardElement);
     });
@@ -193,8 +260,17 @@ function handleCardClick(cardId) {
         moves++;
         movesDisplay.textContent = moves;
         
+        // Increment total moves across all tabs
+        incrementTotalMoves();
+        
+        // Save game state
+        saveGameState();
+        
         // Check for a match
         setTimeout(() => checkForMatch(), 500);
+    } else {
+        // Save game state after first card flip
+        saveGameState();
     }
 }
 
@@ -231,6 +307,9 @@ function checkForMatch() {
     // Clear flipped cards array
     flippedCards = [];
     
+    // Save game state after checking for match
+    saveGameState();
+    
     // Check if game is over
     if (matchedPairs === totalPairs) {
         endGame();
@@ -261,6 +340,9 @@ function handleMismatch(firstCard, secondCard) {
         unflipCard(firstCard.card, firstCard.element);
         unflipCard(secondCard.card, secondCard.element);
         canFlip = true;
+        
+        // Save game state after unflipping mismatched cards
+        saveGameState();
     }, 1000);
 }
 
@@ -272,6 +354,11 @@ function updateTimer() {
     
     // Format time as MM:SS
     timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+    
+    // Save game state every 5 seconds
+    if (seconds % 5 === 0) {
+        saveGameState();
+    }
 }
 
 // End the game
@@ -283,8 +370,118 @@ function endGame() {
     finalMovesDisplay.textContent = moves;
     finalTimeDisplay.textContent = timerDisplay.textContent;
     
+    // Save final game state
+    saveGameState();
+    
     // Display the modal after a short delay
     setTimeout(() => {
         modal.style.display = 'flex';
     }, 500);
+}
+
+// Save game state to session storage
+function saveGameState() {
+    const gameState = {
+        cards,
+        matchedPairs,
+        totalPairs,
+        moves,
+        gameStarted,
+        seconds,
+        difficulty: difficultySelect.value
+    };
+    
+    sessionStorage.setItem(`gameState-${gameId}`, JSON.stringify(gameState));
+}
+
+// Load game state from session storage
+function loadGameState() {
+    const savedState = JSON.parse(sessionStorage.getItem(`gameState-${gameId}`));
+    
+    if (savedState) {
+        cards = savedState.cards;
+        matchedPairs = savedState.matchedPairs;
+        totalPairs = savedState.totalPairs;
+        moves = savedState.moves;
+        gameStarted = savedState.gameStarted;
+        seconds = savedState.seconds;
+        
+        // Set difficulty select to saved value
+        difficultySelect.value = savedState.difficulty;
+        
+        // Setup game board based on difficulty
+        const [rows, cols] = savedState.difficulty.split('x').map(Number);
+        setupGameBoard(rows, cols);
+        
+        // Update displays
+        movesDisplay.textContent = moves;
+        updateTimerDisplay();
+        
+        // Restart timer if game was started
+        if (gameStarted) {
+            timer = setInterval(updateTimer, 1000);
+        }
+        
+        // Render cards with saved state
+        renderCards();
+    }
+}
+
+// Update timer display without incrementing
+function updateTimerDisplay() {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    
+    // Format time as MM:SS
+    timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+}
+
+// Save settings to local storage
+function saveSettings() {
+    const settings = {
+        cardBackColor: cardBackColorPicker.value,
+        cardFrontColor: cardFrontColorPicker.value,
+        soundEnabled: soundToggle.checked
+    };
+    
+    localStorage.setItem('memoryGameSettings', JSON.stringify(settings));
+    
+    // Apply settings
+    applySettings(settings);
+}
+
+// Load settings from local storage
+function loadSettings() {
+    const savedSettings = JSON.parse(localStorage.getItem('memoryGameSettings'));
+    
+    if (savedSettings) {
+        // Update input elements
+        cardBackColorPicker.value = savedSettings.cardBackColor || '#3498db';
+        cardFrontColorPicker.value = savedSettings.cardFrontColor || '#2ecc71';
+        soundToggle.checked = savedSettings.soundEnabled !== undefined ? savedSettings.soundEnabled : true;
+        
+        // Apply settings
+        applySettings(savedSettings);
+    }
+}
+
+// Apply settings to the game
+function applySettings(settings) {
+    document.documentElement.style.setProperty('--card-back', settings.cardBackColor || '#3498db');
+    document.documentElement.style.setProperty('--card-front', settings.cardFrontColor || '#2ecc71');
+    // Sound settings would be applied when playing sounds
+}
+
+// Increment total moves in local storage (shared across tabs)
+function incrementTotalMoves() {
+    let totalMoves = parseInt(localStorage.getItem('totalMoves') || '0');
+    totalMoves++;
+    localStorage.setItem('totalMoves', totalMoves.toString());
+    updateTotalMovesDisplay();
+}
+
+// Update total moves display
+function updateTotalMovesDisplay() {
+    const totalMoves = localStorage.getItem('totalMoves') || '0';
+    totalMovesElement.textContent = totalMoves;
 }
