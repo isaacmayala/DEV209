@@ -1,158 +1,170 @@
-/**
-Todo List Application
-A front-end application for managing todos with user authentication
-*/
+const express = require('express');
+const crypto = require('crypto');
+const cors = require('cors');
 
-// Configuration and Constants
-const API_URL = 'http://localhost:3000';
+const app = express();
 
-// DOM Element References
-// Auth related elements
-const loginSection = document.getElementById('login-section');
-const registerSection = document.getElementById('register-section');
-const showRegisterLink = document.getElementById('show-register');
-const showLoginLink = document.getElementById('show-login');
-const loginForm = document.getElementById('login-form');
-const registerForm = document.getElementById('register-form');
-const logoutBtn = document.getElementById('logout-btn');
-const usernameDisplay = document.getElementById('username-display');
-const authForms = document.getElementById('auth-forms');
-const todoContainer = document.getElementById('todo-container');
-// Todo related elements
-const addTodoForm = document.getElementById('add-todo-form');
-const todosList = document.getElementById('todos-list');
-const editModal = document.getElementById('edit-modal');
-const closeModal = document.querySelector('.close-modal');
-const editTodoForm = document.getElementById('edit-todo-form');
-// Notification element
-const notification = document.getElementById('notification');
+// Enable CORS for all routes
+app.use(cors({
+  // Allow all origins
+  origin: '*',
+  // Allow following methods
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  // Allow following headers
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  // Enable credentials
+  credentials: true,
+  // How long the results of a preflight request can be cached
+  maxAge: 86400 // 24 hours
+}));
 
-// Application State
+app.use(express.json());
 
-let currentUser = null;
-let todos = [];
+// In-memory storage
+const users = {};
+const todos = {};
 
-// Cookie Management Functions
+// Extract token from Authorization header
+const extractToken = (authHeader) => {
+  if (!authHeader) return null;
+  return authHeader.startsWith('Bearer ') 
+    ? authHeader.slice(7) 
+    : authHeader;
+};
 
-/**
+// Find user by token
+const findUserByToken = (token) => 
 
-Sets a cookie with the given name, value and expiry days
-*/
-function setCookie(name, value, days) {
-const expires = new Date();
-expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
-document.cookie = ${name}=${value};expires=${expires.toUTCString()};path=/;
-}
+  Object.values(users).find(u => u.token === token);
 
-/**
+// Middleware for authentication
+const authenticateUser = (req, res, next) => {
+  const token = extractToken(req.headers.authorization);
+  
+  if (!token || !findUserByToken(token)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  next();
+};
 
-Gets a cookie value by name
-*/
-function getCookie(name) {
-const cookieArr = document.cookie.split(';');
-for (let i = 0; i < cookieArr.length; i++) {
-const cookiePair = cookieArr[i].split('=');
-if (name === cookiePair[0].trim()) {
-return decodeURIComponent(cookiePair[1]);
-}
-}
-return null;
-}
+// Register user
+app.post('/register', (req, res) => {
+  const { username, password } = req.body;
+  
+  if (users[username]) {
+    return res.status(400).json({ error: 'Username already exists' });
+  }
 
-/**
+  const token = crypto.randomBytes(32).toString('hex');
+  users[username] = { 
+    username, 
+    password, 
+    token,
+    id: Object.keys(users).length + 1
+  };
 
-Deletes a cookie by name
-*/
-function deleteCookie(name) {
-document.cookie = ${name}=;expires=Thu, 01 Jan 2025 00:00:00 UTC;path=/;
-}
+  todos[username] = [];
 
-// UI Utility Functions
+  res.status(201).json({ 
+    id: users[username].id, 
+    username, 
+    token 
+  });
+});
 
-/**
+// Login user
+app.post('/login', (req, res) => {
+  const { username, password } = req.body;
+  const user = users[username];
 
-Shows a notification message to the user
-*/
-function showNotification(message, type = 'success') {
-notification.textContent = message;
-notification.className = notification ${type} show;
-setTimeout(() => {
-notification.className = 'notification';
-}, 3000);
-}
+  if (!user || user.password !== password) {
+    return res.status(401).json({ error: 'Invalid credentials' });
+  }
 
-/**
+  res.json({ 
+    id: user.id, 
+    username, 
+    token: user.token 
+  });
+});
 
-Toggles between login and register form sections
-*/
-function toggleAuthSections(section) {
-if (section === 'login') {
-loginSection.style.display = 'block';
-registerSection.style.display = 'none';
-} else {
-loginSection.style.display = 'none';
-registerSection.style.display = 'block';
-}
-}
+// Logout user (clear token)
+app.post('/logout', authenticateUser, (req, res) => {
+  const token = extractToken(req.headers.authorization);
+  const user = findUserByToken(token);
 
-/**
+  if (user) {
+    // Generate a new token to invalidate the old one
+    user.token = crypto.randomBytes(32).toString('hex');
+    res.json({ message: 'Logged out successfully' });
+  } else {
+    res.status(401).json({ error: 'Unauthorized' });
+  }
+});
 
-Updates the UI after successful login
-*/
-function updateUIAfterLogin() {
-if (currentUser) {
-authForms.style.display = 'none';
-todoContainer.style.display = 'block';
-logoutBtn.style.display = 'block';
-usernameDisplay.textContent = currentUser.username;
-}
-}
+// Create todo
+app.post('/todos', authenticateUser, (req, res) => {
+  const token = extractToken(req.headers.authorization);
+  const user = findUserByToken(token);
+  const { title, description } = req.body;
 
-/**
+  const newTodo = {
+    id: crypto.randomBytes(16).toString('hex'),
+    title,
+    description,
+    completed: false,
+    createdAt: new Date().toISOString()
+  };
 
-Updates the UI after logout
-*/
-function updateUIAfterLogout() {
-authForms.style.display = 'block';
-todoContainer.style.display = 'none';
-logoutBtn.style.display = 'none';
-usernameDisplay.textContent = '';
-toggleAuthSections('login');
-}
+  todos[user.username].push(newTodo);
+  res.status(201).json(newTodo);
+});
 
-/**
+// Get all todos
+app.get('/todos', authenticateUser, (req, res) => {
+  const token = extractToken(req.headers.authorization);
+  const user = findUserByToken(token);
+  res.json(todos[user.username]);
+});
 
-Opens the edit modal with todo data
-*/
-function openEditModal(todoId) {
-const todo = todos.find(t => t.id === todoId);
-if (!todo) return;
-document.getElementById('edit-todo-id').value = todo.id;
-document.getElementById('edit-todo-title').value = todo.title;
-document.getElementById('edit-todo-description').value = todo.description || '';
-document.getElementById('edit-todo-completed').checked = todo.completed;
-editModal.style.display = 'block';
-}
+// Update todo
+app.put('/todos/:id', authenticateUser, (req, res) => {
+  const token = extractToken(req.headers.authorization);
+  const user = findUserByToken(token);
+  const todoId = req.params.id;
+  const { title, description, completed } = req.body;
 
-/**
+  const todoToUpdate = todos[user.username].find(todo => todo.id === todoId);
+  
+  if (!todoToUpdate) {
+    return res.status(404).json({ error: 'Todo not found' });
+  }
 
-Closes the edit modal
-*/
-function closeEditModal() {
-editModal.style.display = 'none';
-}
+  todoToUpdate.title = title || todoToUpdate.title;
+  todoToUpdate.description = description || todoToUpdate.description;
+  todoToUpdate.completed = completed !== undefined ? completed : todoToUpdate.completed;
 
-/**
+  res.json(todoToUpdate);
+});
 
-Renders the todo list in the UI
-*/
-function renderTodos() {
-todosList.innerHTML = '';
-if (todos.length === 0) {
-todosList.innerHTML = '<p>No todos yet. Add one above!</p>';
-return;
-}
-todos.forEach(todo => {
-const todoItem = document.createElement('div');
-todoItem.className = todo-item ${todo.completed ? 'completed' : ''};
+// Delete todo
+app.delete('/todos/:id', authenticateUser, (req, res) => {
+  const token = extractToken(req.headers.authorization);
+  const user = findUserByToken(token);
+  const todoId = req.params.id;
 
+  const todoIndex = todos[user.username].findIndex(todo => todo.id === todoId);
+  
+  if (todoIndex === -1) {
+    return res.status(404).json({ error: 'Todo not found' });
+  }
+
+  todos[user.username].splice(todoIndex, 1);
+  res.status(204).send();
+});
+
+const PORT = 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
