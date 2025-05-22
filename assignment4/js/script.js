@@ -1,7 +1,7 @@
 /**
  * Todo List App - Front-end JavaScript
  */
-
+import React, { useState, useEffect } from 'react';
 // API Base URL - Update this to match your server address
 const API_BASE_URL = 'http://localhost:3000';
 
@@ -54,16 +54,19 @@ const elements = {
 
 // Cookie management
 const Cookies = {
-    set: (name, value, days = 7) => {
-        const expires = new Date(Date.now() + days * 86400000).toUTCString();
-        document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/`;
-    },
-    
-    get: (name) => {
-        const cookies = document.cookie.split(';').map(cookie => cookie.trim());
-        const cookie = cookies.find(cookie => cookie.startsWith(`${name}=`));
-        return cookie ? decodeURIComponent(cookie.substring(name.length + 1)) : null;
-    },
+  set: (name, value, days = 7) => {
+    const expires = new Date(Date.now() + days * 86400000).toUTCString();
+    document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/`;
+  },
+  get: (name) => {
+    const cookies = document.cookie.split(';').map(cookie => cookie.trim());
+    const cookie = cookies.find(cookie => cookie.startsWith(`${name}=`));
+    return cookie ? decodeURIComponent(cookie.substring(name.length + 1)) : null;
+  },
+  remove: (name) => {
+    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+  }
+};
     
     remove: (name) => {
         document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
