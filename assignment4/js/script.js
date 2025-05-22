@@ -1,58 +1,6 @@
-/**
- * Todo List App - Front-end JavaScript
- */
 import React, { useState, useEffect } from 'react';
-// API Base URL - Update this to match your server address
-const API_BASE_URL = 'http://localhost:3000';
 
-// DOM Elements
-const elements = {
-    // Auth sections
-    loginSection: document.getElementById('login-section'),
-    registerSection: document.getElementById('register-section'),
-    todoContainer: document.getElementById('todo-container'),
-    authForms: document.getElementById('auth-forms'),
-    
-    // Auth UI elements
-    usernameDisplay: document.getElementById('username-display'),
-    logoutBtn: document.getElementById('logout-btn'),
-    
-    // Form elements
-    loginForm: document.getElementById('login-form'),
-    registerForm: document.getElementById('register-form'),
-    addTodoForm: document.getElementById('add-todo-form'),
-    editTodoForm: document.getElementById('edit-todo-form'),
-    
-    // Todo list container
-    todosList: document.getElementById('todos-list'),
-    
-    // Modal elements
-    editModal: document.getElementById('edit-modal'),
-    closeModal: document.querySelector('.close-modal'),
-    
-    // Form inputs
-    loginUsername: document.getElementById('login-username'),
-    loginPassword: document.getElementById('login-password'),
-    registerUsername: document.getElementById('register-username'),
-    registerPassword: document.getElementById('register-password'),
-    todoTitle: document.getElementById('todo-title'),
-    todoDescription: document.getElementById('todo-description'),
-    editTodoId: document.getElementById('edit-todo-id'),
-    editTodoTitle: document.getElementById('edit-todo-title'),
-    editTodoDescription: document.getElementById('edit-todo-description'),
-    editTodoCompleted: document.getElementById('edit-todo-completed'),
-    
-    // Navigation
-    showRegisterLink: document.getElementById('show-register'),
-    showLoginLink: document.getElementById('show-login'),
-    
-    // Notification
-    notification: document.getElementById('notification')
-};
-
-// ===== Utility Functions =====
-
-// Cookie management
+// Cookie utility functions
 const Cookies = {
   set: (name, value, days = 7) => {
     const expires = new Date(Date.now() + days * 86400000).toUTCString();
@@ -64,368 +12,400 @@ const Cookies = {
     return cookie ? decodeURIComponent(cookie.substring(name.length + 1)) : null;
   },
   remove: (name) => {
-    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+    document.cookie = `${name}=; expires=Tues, 01 Jan 2030 00:00:00 GMT; path=/`;
   }
 };
-    
-    remove: (name) => {
-        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
-    }
+
+// Notification Component
+const Notification = ({ message, type, isVisible }) => {
+  if (!isVisible) return null;
+  
+  return (
+    <div className={`notification show ${type}`}>
+      {message}
+    </div>
+  );
 };
 
-// Show notification
-const showNotification = (message, type = 'success') => {
-    elements.notification.textContent = message;
-    elements.notification.className = `notification ${type} show`;
-    
+// Authentication Component
+const AuthForms = ({ onLogin, onRegister }) => {
+  const [isLoginMode, setIsLoginMode] = useState(true);
+  const [loginData, setLoginData] = useState({ username: '', password: '' });
+  const [registerData, setRegisterData] = useState({ username: '', password: '' });
+
+  const handleLoginSubmit = (e) => {
+    e.preventDefault();
+    onLogin(loginData.username, loginData.password);
+    setLoginData({ username: '', password: '' });
+  };
+
+  const handleRegisterSubmit = (e) => {
+    e.preventDefault();
+    onRegister(registerData.username, registerData.password);
+    setRegisterData({ username: '', password: '' });
+  };
+
+  return (
+    <div className="auth-forms">
+      {isLoginMode ? (
+        <div className="auth-section">
+          <h2>Login</h2>
+          <div className="auth-form">
+            <div className="form-group">
+              <label>Username</label>
+              <input
+                type="text"
+                value={loginData.username}
+                onChange={(e) => setLoginData({...loginData, username: e.target.value})}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label>Password</label>
+              <input
+                type="password"
+                value={loginData.password}
+                onChange={(e) => setLoginData({...loginData, password: e.target.value})}
+                required
+              />
+            </div>
+            <button type="button" onClick={handleLoginSubmit}>Login</button>
+          </div>
+          <p>Don't have an account? <button className="link-btn" onClick={() => setIsLoginMode(false)}>Register here</button></p>
+        </div>
+      ) : (
+        <div className="auth-section">
+          <h2>Register</h2>
+          <div className="auth-form">
+            <div className="form-group">
+              <label>Username</label>
+              <input
+                type="text"
+                value={registerData.username}
+                onChange={(e) => setRegisterData({...registerData, username: e.target.value})}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label>Password</label>
+              <input
+                type="password"
+                value={registerData.password}
+                onChange={(e) => setRegisterData({...registerData, password: e.target.value})}
+                required
+              />
+            </div>
+            <button type="button" onClick={handleRegisterSubmit}>Register</button>
+          </div>
+          <p>Already have an account? <button className="link-btn" onClick={() => setIsLoginMode(true)}>Login here</button></p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Todo Item Component
+const TodoItem = ({ todo, onToggle, onEdit, onDelete }) => {
+  return (
+    <div className={`todo-item ${todo.completed ? 'completed' : ''}`}>
+      <div className="todo-info">
+        <div className="todo-title">{todo.title}</div>
+        <div className="todo-description">{todo.description || 'No description'}</div>
+      </div>
+      <div className="todo-actions">
+        <button className="btn-toggle" onClick={() => onToggle(todo.id)}>
+          {todo.completed ? 'Mark Incomplete' : 'Mark Complete'}
+        </button>
+        <button className="btn-edit" onClick={() => onEdit(todo)}>Edit</button>
+        <button className="btn-delete" onClick={() => onDelete(todo.id)}>Delete</button>
+      </div>
+    </div>
+  );
+};
+
+// Todo List Component
+const TodoList = ({ todos, onToggle, onEdit, onDelete }) => {
+  if (todos.length === 0) {
+    return (
+      <div className="empty-todos">
+        <p>No todos yet. Add one above!</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="todos-list">
+      {todos.map(todo => (
+        <TodoItem
+          key={todo.id}
+          todo={todo}
+          onToggle={onToggle}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
+      ))}
+    </div>
+  );
+};
+
+// Add Todo Form Component
+const AddTodoForm = ({ onAddTodo }) => {
+  const [todoData, setTodoData] = useState({ title: '', description: '' });
+
+  const handleSubmit = () => {
+    if (todoData.title.trim()) {
+      onAddTodo(todoData.title, todoData.description);
+      setTodoData({ title: '', description: '' });
+    }
+  };
+
+  return (
+    <div className="add-todo-section">
+      <h2>Add New Todo</h2>
+      <div className="todo-form">
+        <div className="form-group">
+          <label>Title</label>
+          <input
+            type="text"
+            value={todoData.title}
+            onChange={(e) => setTodoData({...todoData, title: e.target.value})}
+            required
+          />
+        </div>
+        <div className="form-group">
+          <label>Description</label>
+          <textarea
+            value={todoData.description}
+            onChange={(e) => setTodoData({...todoData, description: e.target.value})}
+            rows="3"
+          />
+        </div>
+        <button type="button" onClick={handleSubmit}>Add Todo</button>
+      </div>
+    </div>
+  );
+};
+
+// Edit Todo Modal Component
+const EditTodoModal = ({ todo, isOpen, onClose, onSave }) => {
+  const [editData, setEditData] = useState({
+    title: '',
+    description: '',
+    completed: false
+  });
+
+  useEffect(() => {
+    if (todo) {
+      setEditData({
+        title: todo.title,
+        description: todo.description,
+        completed: todo.completed
+      });
+    }
+  }, [todo]);
+
+  const handleSubmit = () => {
+    if (editData.title.trim()) {
+      onSave(todo.id, editData.title, editData.description, editData.completed);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="modal" style={{ display: 'flex' }}>
+      <div className="modal-content">
+        <span className="close-modal" onClick={onClose}>&times;</span>
+        <h2>Edit Todo</h2>
+        <div className="edit-form">
+          <div className="form-group">
+            <label>Title</label>
+            <input
+              type="text"
+              value={editData.title}
+              onChange={(e) => setEditData({...editData, title: e.target.value})}
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label>Description</label>
+            <textarea
+              value={editData.description}
+              onChange={(e) => setEditData({...editData, description: e.target.value})}
+              rows="3"
+            />
+          </div>
+          <div className="form-group checkbox">
+            <label>
+              <input
+                type="checkbox"
+                checked={editData.completed}
+                onChange={(e) => setEditData({...editData, completed: e.target.checked})}
+              />
+              Completed
+            </label>
+          </div>
+          <button type="button" onClick={handleSubmit}>Save Changes</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Main App Component
+const TodoApp = () => {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [todos, setTodos] = useState([]);
+  const [editingTodo, setEditingTodo] = useState(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [notification, setNotification] = useState({ message: '', type: '', isVisible: false });
+
+  // Load user from cookies on component mount
+  useEffect(() => {
+    const storedUsername = Cookies.get('username');
+    const storedToken = Cookies.get('authToken');
+    if (storedUsername && storedToken) {
+      setCurrentUser(storedUsername);
+      loadMockTodos();
+    }
+  }, []);
+
+  const showNotification = (message, type = 'success') => {
+    setNotification({ message, type, isVisible: true });
     setTimeout(() => {
-        elements.notification.classList.remove('show');
+      setNotification(prev => ({ ...prev, isVisible: false }));
     }, 3000);
-};
+  };
 
-// API request helper
-const apiRequest = async (endpoint, method = 'GET', data = null) => {
-    const token = Cookies.get('authToken');
-    
-    const options = {
-        method,
-        headers: {
-            'Content-Type': 'application/json'
-        }
-    };
-    
-    if (token) {
-        options.headers.Authorization = `Bearer ${token}`;
-    }
-    
-    if (data) {
-        options.body = JSON.stringify(data);
-    }
-    
-    try {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
-        
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'API request failed');
-        }
-        
-        // For DELETE requests returning 204 No Content
-        if (response.status === 204) {
-            return true;
-        }
-        
-        return await response.json();
-    } catch (error) {
-        console.error('API Error:', error);
-        showNotification(error.message, 'error');
-        throw error;
-    }
-};
+  const loadMockTodos = () => {
+    setTodos([
+      { id: 1, title: 'Learn React', description: 'Understand components, state, and props', completed: true },
+      { id: 2, title: 'Refactor Todo App', description: 'Convert vanilla JS to React components', completed: false },
+      { id: 3, title: 'Style with CSS', description: 'Apply responsive design and modern styling', completed: false }
+    ]);
+  };
 
-// ===== Authentication Functions =====
-
-// Register user
-const registerUser = async (username, password) => {
-    try {
-        const data = await apiRequest('/register', 'POST', { username, password });
-        
-        // Save the auth token
-        Cookies.set('authToken', data.token);
-        Cookies.set('username', data.username);
-        
-        showNotification('Registration successful!');
-        return data;
-    } catch (error) {
-        showNotification(`Registration failed: ${error.message}`, 'error');
-        throw error;
-    }
-};
-
-// Login user
-const loginUser = async (username, password) => {
-    try {
-        const data = await apiRequest('/login', 'POST', { username, password });
-        
-        // Save the auth token
-        Cookies.set('authToken', data.token);
-        Cookies.set('username', data.username);
-        
-        showNotification('Login successful!');
-        return data;
-    } catch (error) {
-        showNotification(`Login failed: ${error.message}`, 'error');
-        throw error;
-    }
-};
-
-// Logout user
-const logoutUser = async () => {
-    try {
-        await apiRequest('/logout', 'POST');
-        
-        // Clear the auth token
-        Cookies.remove('authToken');
-        Cookies.remove('username');
-        
-        showNotification('Logged out successfully');
-        showLoginForm();
-    } catch (error) {
-        showNotification(`Logout failed: ${error.message}`, 'error');
-    }
-};
-
-// Check if user is logged in
-const checkAuthStatus = () => {
-    const token = Cookies.get('authToken');
-    const username = Cookies.get('username');
-    
-    if (token && username) {
-        elements.usernameDisplay.textContent = `Welcome, ${username}!`;
-        elements.logoutBtn.style.display = 'block';
-        showTodoContainer();
-        fetchTodos();
-        return true;
+  const handleLogin = (username, password) => {
+    if (username && password) {
+      const mockToken = 'mock-token-' + Date.now();
+      Cookies.set('authToken', mockToken);
+      Cookies.set('username', username);
+      setCurrentUser(username);
+      loadMockTodos();
+      showNotification('Login successful!', 'success');
     } else {
-        showLoginForm();
-        return false;
+      showNotification('Invalid credentials.', 'error');
     }
-};
+  };
 
-// ===== Todo CRUD Functions =====
-
-// Fetch all todos
-const fetchTodos = async () => {
-    try {
-        const todos = await apiRequest('/todos');
-        renderTodoList(todos);
-    } catch (error) {
-        showNotification(`Error fetching todos: ${error.message}`, 'error');
+  const handleRegister = (username, password) => {
+    if (username && password) {
+      const mockToken = 'mock-token-' + Date.now();
+      Cookies.set('authToken', mockToken);
+      Cookies.set('username', username);
+      setCurrentUser(username);
+      setTodos([]);
+      showNotification('Registration successful!', 'success');
+    } else {
+      showNotification('Registration failed.', 'error');
     }
-};
+  };
 
-// Add a new todo
-const addTodo = async (title, description) => {
-    try {
-        const newTodo = await apiRequest('/todos', 'POST', { title, description });
-        showNotification('Todo added successfully!');
-        fetchTodos(); // Refresh the list
-        return newTodo;
-    } catch (error) {
-        showNotification(`Error adding todo: ${error.message}`, 'error');
-        throw error;
+  const handleLogout = () => {
+    Cookies.remove('authToken');
+    Cookies.remove('username');
+    setCurrentUser(null);
+    setTodos([]);
+    showNotification('Logged out successfully');
+  };
+
+  const handleAddTodo = (title, description) => {
+    const newTodo = {
+      id: todos.length > 0 ? Math.max(...todos.map(t => t.id)) + 1 : 1,
+      title,
+      description,
+      completed: false
+    };
+    setTodos([...todos, newTodo]);
+    showNotification('Todo added successfully!');
+  };
+
+  const handleToggleTodo = (id) => {
+    setTodos(todos.map(todo =>
+      todo.id === id ? { ...todo, completed: !todo.completed } : todo
+    ));
+    showNotification('Todo updated successfully!');
+  };
+
+  const handleDeleteTodo = (id) => {
+    if (window.confirm('Are you sure you want to delete this todo?')) {
+      setTodos(todos.filter(todo => todo.id !== id));
+      showNotification('Todo deleted successfully!');
     }
+  };
+
+  const handleEditTodo = (todo) => {
+    setEditingTodo(todo);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEditedTodo = (id, title, description, completed) => {
+    setTodos(todos.map(todo =>
+      todo.id === id ? { ...todo, title, description, completed } : todo
+    ));
+    setIsEditModalOpen(false);
+    setEditingTodo(null);
+    showNotification('Todo updated successfully!');
+  };
+
+  return (
+    <div className="container">
+      <header className="app-header">
+        <h1>Todo List App</h1>
+        <div className="auth-status">
+          <span className="username-display">
+            {currentUser && `Welcome, ${currentUser}!`}
+          </span>
+          {currentUser && (
+            <button className="logout-btn" onClick={handleLogout}>
+              Logout
+            </button>
+          )}
+        </div>
+      </header>
+
+      {!currentUser ? (
+        <AuthForms onLogin={handleLogin} onRegister={handleRegister} />
+      ) : (
+        <div className="todo-container">
+          <AddTodoForm onAddTodo={handleAddTodo} />
+          <div className="todo-list-section">
+            <h2>Your Todos</h2>
+            <TodoList
+              todos={todos}
+              onToggle={handleToggleTodo}
+              onEdit={handleEditTodo}
+              onDelete={handleDeleteTodo}
+            />
+          </div>
+          <EditTodoModal
+            todo={editingTodo}
+            isOpen={isEditModalOpen}
+            onClose={() => setIsEditModalOpen(false)}
+            onSave={handleSaveEditedTodo}
+          />
+        </div>
+      )}
+
+      <Notification
+        message={notification.message}
+        type={notification.type}
+        isVisible={notification.isVisible}
+      />
+
+   
+    </div>
+  );
 };
 
-// Update a todo
-const updateTodo = async (id, updates) => {
-    try {
-        const updatedTodo = await apiRequest(`/todos/${id}`, 'PUT', updates);
-        showNotification('Todo updated successfully!');
-        fetchTodos(); // Refresh the list
-        return updatedTodo;
-    } catch (error) {
-        showNotification(`Error updating todo: ${error.message}`, 'error');
-        throw error;
-    }
-};
-
-// Delete a todo
-const deleteTodo = async (id) => {
-    try {
-        await apiRequest(`/todos/${id}`, 'DELETE');
-        showNotification('Todo deleted successfully!');
-        fetchTodos(); // Refresh the list
-    } catch (error) {
-        showNotification(`Error deleting todo: ${error.message}`, 'error');
-    }
-};
-
-// Toggle todo completion status
-const toggleTodoStatus = async (id, completed) => {
-    try {
-        await updateTodo(id, { completed });
-    } catch (error) {
-        showNotification(`Error updating status: ${error.message}`, 'error');
-    }
-};
-
-// ===== UI Functions =====
-
-// Show login form
-const showLoginForm = () => {
-    elements.loginSection.style.display = 'block';
-    elements.registerSection.style.display = 'none';
-    elements.todoContainer.style.display = 'none';
-    elements.authForms.style.display = 'block';
-    elements.logoutBtn.style.display = 'none';
-};
-
-// Show register form
-const showRegisterForm = () => {
-    elements.loginSection.style.display = 'none';
-    elements.registerSection.style.display = 'block';
-    elements.todoContainer.style.display = 'none';
-    elements.authForms.style.display = 'block';
-};
-
-// Show todo container
-const showTodoContainer = () => {
-    elements.authForms.style.display = 'none';
-    elements.todoContainer.style.display = 'block';
-};
-
-// Render todo list
-const renderTodoList = (todos) => {
-    elements.todosList.innerHTML = '';
-    
-    if (todos.length === 0) {
-        elements.todosList.innerHTML = '<p>No todos yet. Add one above!</p>';
-        return;
-    }
-    
-    todos.forEach(todo => {
-        const todoElement = document.createElement('div');
-        todoElement.className = `todo-item ${todo.completed ? 'completed' : ''}`;
-        todoElement.setAttribute('data-id', todo.id);
-        
-        todoElement.innerHTML = `
-            <div class="todo-info">
-                <div class="todo-title">${todo.title}</div>
-                <div class="todo-description">${todo.description || 'No description'}</div>
-            </div>
-            <div class="todo-actions">
-                <button class="btn-toggle">${todo.completed ? 'Mark Incomplete' : 'Mark Complete'}</button>
-                <button class="btn-edit">Edit</button>
-                <button class="btn-delete">Delete</button>
-            </div>
-        `;
-        
-        // Add event listeners for todo actions
-        const toggleBtn = todoElement.querySelector('.btn-toggle');
-        const editBtn = todoElement.querySelector('.btn-edit');
-        const deleteBtn = todoElement.querySelector('.btn-delete');
-        
-        toggleBtn.addEventListener('click', () => {
-            toggleTodoStatus(todo.id, !todo.completed);
-        });
-        
-        editBtn.addEventListener('click', () => {
-            showEditModal(todo);
-        });
-        
-        deleteBtn.addEventListener('click', () => {
-            if (confirm('Are you sure you want to delete this todo?')) {
-                deleteTodo(todo.id);
-            }
-        });
-        
-        elements.todosList.appendChild(todoElement);
-    });
-};
-
-// Show edit modal
-const showEditModal = (todo) => {
-    elements.editTodoId.value = todo.id;
-    elements.editTodoTitle.value = todo.title;
-    elements.editTodoDescription.value = todo.description || '';
-    elements.editTodoCompleted.checked = todo.completed;
-    
-    elements.editModal.style.display = 'block';
-};
-
-// Hide edit modal
-const hideEditModal = () => {
-    elements.editModal.style.display = 'none';
-};
-
-// ===== Event Listeners =====
-
-// When DOM is fully loaded
-document.addEventListener('DOMContentLoaded', () => {
-    // Check if user is already logged in
-    checkAuthStatus();
-    
-    // Switch between login and register forms
-    elements.showRegisterLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        showRegisterForm();
-    });
-    
-    elements.showLoginLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        showLoginForm();
-    });
-    
-    // Form submissions
-    elements.registerForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const username = elements.registerUsername.value.trim();
-        const password = elements.registerPassword.value;
-        
-        try {
-            await registerUser(username, password);
-            elements.registerForm.reset();
-            checkAuthStatus();
-        } catch (error) {
-            console.error('Registration Error:', error);
-        }
-    });
-    
-    elements.loginForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const username = elements.loginUsername.value.trim();
-        const password = elements.loginPassword.value;
-        
-        try {
-            await loginUser(username, password);
-            elements.loginForm.reset();
-            checkAuthStatus();
-        } catch (error) {
-            console.error('Login Error:', error);
-        }
-    });
-    
-    elements.addTodoForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const title = elements.todoTitle.value.trim();
-        const description = elements.todoDescription.value.trim();
-        
-        try {
-            await addTodo(title, description);
-            elements.addTodoForm.reset();
-        } catch (error) {
-            console.error('Add Todo Error:', error);
-        }
-    });
-    
-    elements.editTodoForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const id = elements.editTodoId.value;
-        const title = elements.editTodoTitle.value.trim();
-        const description = elements.editTodoDescription.value.trim();
-        const completed = elements.editTodoCompleted.checked;
-        
-        try {
-            await updateTodo(id, { title, description, completed });
-            hideEditModal();
-        } catch (error) {
-            console.error('Edit Todo Error:', error);
-        }
-    });
-    
-    // Logout button
-    elements.logoutBtn.addEventListener('click', logoutUser);
-    
-    // Close modal
-    elements.closeModal.addEventListener('click', hideEditModal);
-    window.addEventListener('click', (e) => {
-        if (e.target === elements.editModal) {
-            hideEditModal();
-        }
-    });
-});
+export default TodoApp;
